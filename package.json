@@ -1,0 +1,17 @@
+{
+  "name": "csc4035-lab01-html",
+  "version": "1.0.0",
+  "description": "Lab 1: HTML5 Document Structure - CSC4035 Web Programming",
+  "main": "index.html",
+  "scripts": {
+    "test": "node tests/visible/tests.js",
+    "grade": "bash tests/visible/auto-grade.sh"
+  },
+  "keywords": [
+    "html5",
+    "semantics",
+    "accessibility",
+    "csc4035"
+  ],
+  "license": "MIT"
+}
