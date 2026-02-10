@@ -26,7 +26,7 @@ By completing this lab, you will be able to:
 
 ## Your Assignment
 
-Check `ASSIGNMENT.md` for your personalized assignment theme (generated after you accept the assignment).
+Build a **personal portfolio page** that showcases your skills as a developer. Follow the tasks below to create a well-structured, semantic HTML5 document.
 
 ---
 
