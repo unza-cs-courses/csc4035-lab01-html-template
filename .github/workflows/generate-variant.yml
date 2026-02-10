@@ -1,0 +1,132 @@
+name: Generate Student Variant
+
+on:
+  create:
+    # Triggers when repository is created (student accepts assignment)
+  workflow_dispatch:
+
+jobs:
+  generate-variant:
+    name: Generate Unique Variant
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    # Only run once when the repository is first created
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && (github.event.ref == 'main' || github.event.ref == 'master'))
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Extract Student Username
+        id: student
+        run: |
+          # Repository name format: csc4035-lab01-html-username
+          REPO_NAME="${{ github.event.repository.name }}"
+          PREFIX="csc4035-lab01-html-"
+
+          # Keep full username even when it contains hyphens.
+          if [[ "$REPO_NAME" == ${PREFIX}* ]]; then
+            USERNAME="${REPO_NAME#${PREFIX}}"
+          else
+            USERNAME="${REPO_NAME##*-}"
+          fi
+
+          echo "username=${USERNAME}" >> $GITHUB_OUTPUT
+          echo "Generating variant for: ${USERNAME}"
+
+      - name: Generate Variant Configuration
+        run: |
+          python3 << 'EOF'
+          import hashlib
+          import random
+          import json
+
+          student_id = "${{ steps.student.outputs.username }}"
+          assignment_id = "lab01-html"
+          seed_salt = "csc4035-2026"
+
+          # Compute deterministic seed
+          combined = f"{assignment_id}:{seed_salt}:{student_id}"
+          hash_bytes = hashlib.sha256(combined.encode()).digest()
+          seed = int.from_bytes(hash_bytes[:8], byteorder='big')
+          group_id = seed % 10
+
+          rng = random.Random(seed)
+
+          # Portfolio themes
+          THEMES = [
+              {"theme": "Software Developer", "sections": ["About Me", "Projects", "Skills", "Contact"]},
+              {"theme": "Graphic Designer", "sections": ["Portfolio", "About", "Services", "Contact"]},
+              {"theme": "Data Scientist", "sections": ["Research", "Projects", "Publications", "Contact"]},
+              {"theme": "UX Designer", "sections": ["Case Studies", "About", "Process", "Contact"]},
+              {"theme": "Digital Marketer", "sections": ["Campaigns", "About", "Services", "Contact"]},
+              {"theme": "Photographer", "sections": ["Gallery", "About", "Pricing", "Contact"]},
+              {"theme": "Music Producer", "sections": ["Tracks", "About", "Studio", "Contact"]},
+              {"theme": "Architect", "sections": ["Projects", "Philosophy", "Awards", "Contact"]},
+              {"theme": "Writer", "sections": ["Publications", "About", "Blog", "Contact"]},
+              {"theme": "Game Developer", "sections": ["Games", "About", "Devlog", "Contact"]},
+          ]
+
+          variant = {
+              "student_id": student_id,
+              "variant_seed": seed,
+              "group_id": group_id,
+              "parameters": {
+                  "portfolio_theme": THEMES[group_id],
+                  "required_elements": ["header", "nav", "main", "footer", "section", "article"],
+                  "form_fields": [
+                      {"name": "name", "type": "text", "required": True},
+                      {"name": "email", "type": "email", "required": True},
+                      {"name": "subject", "type": "text", "required": True},
+                      {"name": "message", "type": "textarea", "required": True},
+                  ]
+              }
+          }
+
+          with open('.variant_config.json', 'w') as f:
+              json.dump(variant, f, indent=2)
+
+          print(f"Generated variant for {student_id} (Group {group_id})")
+          print(f"Theme: {THEMES[group_id]['theme']}")
+          EOF
+
+      - name: Update Assignment Instructions
+        run: |
+          # Read variant config
+          THEME=$(python3 -c "import json; print(json.load(open('.variant_config.json'))['parameters']['portfolio_theme']['theme'])")
+
+          # Create personalized assignment file
+          cat > ASSIGNMENT.md << EOF
+          # Your Assignment: ${THEME} Portfolio
+
+          Welcome to Lab 1! You have been assigned to create a **${THEME}** portfolio website.
+
+          ## Your Specific Requirements
+
+          Based on your unique variant, you should create a portfolio that reflects the ${THEME} profession.
+
+          Please follow all instructions in the main README.md file, but tailor your content to match your assigned theme.
+
+          ---
+          *This assignment was automatically personalized for you. Your variant configuration is stored in \`.variant_config.json\`.*
+          EOF
+
+      - name: Commit Variant Files
+        run: |
+          git config user.name "GitHub Classroom"
+          git config user.email "noreply@github.com"
+          git add .variant_config.json ASSIGNMENT.md
+
+          if git diff --cached --quiet; then
+            echo "No variant changes to commit"
+            exit 0
+          fi
+
+          git commit -m "Generate unique variant for ${{ steps.student.outputs.username }}"
+          git push origin HEAD:${{ github.ref_name }}
