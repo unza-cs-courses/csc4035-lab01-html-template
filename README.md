@@ -142,7 +142,7 @@ Check your visible test results in the "Actions" tab of your repository.
 1. Complete all tasks
 2. Commit your changes: `git add . && git commit -m "Complete Lab 1"`
 3. Push to GitHub: `git push`
-4. Verify tests pass in the Actions tab
+4. Verify all tests pass locally with `npm test`
 
 ---
 
